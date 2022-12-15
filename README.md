@@ -1,5 +1,11 @@
 
-# Overview of Data
+## Libraries
+
+#### For Computing Distances between documents
+
+  * [datasketch](https://github.com/ekzhu/datasketch) locally sensitive hashes
+
+## Overview of Data
 
 ### Entities
 
@@ -40,4 +46,11 @@ This includes all open content like content body, description, comment, note, et
   * Body = the content of the document
   * \_spans = All found spans with hints (e.g. creator_type for creators, locus or page for work)
 
+
+## Special relations
+
+### Source
+
+    source_to, source_by     equvalent to contains / contained_by
+    one of  Locus/Path, Page, Date, Index
 
