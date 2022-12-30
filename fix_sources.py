@@ -39,8 +39,9 @@ class MyLogger(logging.Logger):
 logging.setLoggerClass(MyLogger)
 
 logging.basicConfig(
-    level="INFO",
-    format="[%(asctime)s %(levelname) 8s] %(message)s",
+    level="ERROR",
+    # level="INFO",
+    format="[%(asctime)s %(levelname) 5s] %(message)s",
     datefmt="%Y%m%d:%H%M%S",
     handlers=[
         logging.FileHandler("rengu_fix.log"),
@@ -139,7 +140,7 @@ def main(store):
 
             if not isinstance(source, dict):
                 log.exception(f"FATAL {_id}")
-                raise TypeError
+                raise TypeError("{_id} {path} not dict")
 
             if not source.get("By"):
                 source["_try_By"] = _by
@@ -154,8 +155,10 @@ def main(store):
             if source.get("_try_By"):
                 del source["_try_By"]
 
-        # FIX CREATORS
+        # FIX References
+        REFS = ["References", "SeeAlso", "Commentary", "Variants"]
 
+        # CHECK CHANGES AND SAVE
         if DeepDiff(orig, data, ignore_order=True):
             log.info(f"{_id} UPDATED")
             print(dumps(data))

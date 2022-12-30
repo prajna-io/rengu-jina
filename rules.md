@@ -1,4 +1,11 @@
 
+* foreach entry
+
+    ? check invalid tag
+    ? check tag type is Dict, List, Scalar, UUID, Date
+    * standardize date format
+
+
 
 * foreach **.SeeAlso **.References **.Variants 
     ? check is not list
