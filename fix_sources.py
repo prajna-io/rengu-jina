@@ -11,6 +11,7 @@ import urllib3
 import urllib3.connectionpool
 
 import dpath.util as dpath
+import dpath.exceptions as dpath_exceptions
 from deepdiff import DeepDiff
 from splitstream import splitfile
 from rich.logging import RichHandler
@@ -39,8 +40,8 @@ class MyLogger(logging.Logger):
 logging.setLoggerClass(MyLogger)
 
 logging.basicConfig(
-    level="ERROR",
-    # level="INFO",
+    # level="ERROR",
+    level="INFO",
     format="[%(asctime)s %(levelname) 5s] %(message)s",
     datefmt="%Y%m%d:%H%M%S",
     handlers=[
@@ -73,11 +74,17 @@ def check_source(store, source, parent_id):
             return False
 
     if url := source.get("URL"):
-        log.info(f"{parent_id} Handling URL {url}")
+        log.info(f"{parent_id} Skipping Handling URL")
         return False
 
     for path, isbn in dpath.search(source, "**.ISBN", separator=".", yielded=True):
+        if isinstance(isbn, list):
+            isbn = isbn[0]
+        if isinstance(isbn, float):
+            isbn = int(isbn)
         isbn = str(isbn).replace("-", "")
+        if len(isbn) == 9:
+            isbn = "0" + isbn
 
         if source_id := get_one(store, [f"ISBN={isbn}"]):
             log.info(f"{parent_id} matched {source_id} to ISBN {isbn}")
@@ -88,36 +95,47 @@ def check_source(store, source, parent_id):
 
     if title := source.get("Title"):
 
+        # First try simple title match
         results = [u for u in store.query([f"Title={title}", "Category=work"])]
-        if len(results) > 0:
-            log.info(f"{parent_id} checking title >{title}< count {len(results)}")
 
-            if len(results) == 1:
-                result = get_one(store, [f"Title={title}", "Category=work"])
-                log.info(f"{parent_id} one match for {title} {result}")
-                return result
+        # Try an alternate title
+        if len(results) == 0:
+            log.info(f"{parent_id} no results on Title, trying AlternateTitles")
+            results = [
+                u for u in store.query([f"AlternateTitles={title}", "Category=work"])
+            ]
+
+        # Process
+        if not results:
+            log.error(f"{parent_id} unresolved match for >{title}<")
+            return False
+
+        if len(results) == 1:
+            log.info(f"{parent_id} one match for {title} {results[0]}")
+            return results[0]
+
+        if len(results) > 0:
+
+            result_set = [store.get(result) for result in results]
 
             # Check match for by
             by = source.get("By", source.get("_try_By"))
             if by:
-                if result := get_one(
-                    store, [f"Title={title}", f"By={by}", "Category=work"]
-                ):
-                    log.info(f"{parent_id} found match {result}")
-                    return result
+                for result in result_set:
+                    if result.get("By") == by:
+                        log.info(f"{parent_id} found match {result.get('ID')} with By=")
+                        return result.get("ID")
 
-            if result := get_one(
-                store, [f"Title={title}", f"Media=prime", "Category=work"]
-            ):
-                log.info(f"{parent_id} found PRIME match {result}")
-                return result
+            # check Media=prime
+            for result in result_set:
+                if result.get("Media") == "prime":
+                    log.info(f"{parent_id} found match {result} with Media=prime")
+                    return result.get("ID")
 
-            log.error(f"{parent_id} unresolved match for >{title}<")
+            log.error(
+                f"{parent_id} ambigious matches for >{title}< count {len(results)}"
+            )
             return False
-
-        else:
-            log.error(f"{parent_id} missing title >{title}<")
-            # CREATE
 
     log.error(f"{parent_id} exhausted all source lookups")
     return
@@ -152,13 +170,16 @@ def main(store):
                 log.info(f"{_id} Reference {path}.ID={source_id}")
                 dpath.new(data, path + ".ID", str(source_id), separator=".")
 
-            if source.get("_try_By"):
-                del source["_try_By"]
-
         # FIX References
         REFS = ["References", "SeeAlso", "Commentary", "Variants"]
 
         # CHECK CHANGES AND SAVE
+        try:
+            _ = dpath.delete(data, "**._try_By", separator=".")
+        except dpath_exceptions.PathNotFound:
+            # ok, ignore
+            pass
+
         if DeepDiff(orig, data, ignore_order=True):
             log.info(f"{_id} UPDATED")
             print(dumps(data))

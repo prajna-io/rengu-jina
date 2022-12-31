@@ -30,7 +30,7 @@ def edit(old_data):
         tf.flush()
 
         ok = subprocess.check_call([EDITOR, tf.name], stdin=term_in, stdout=term_out)
-        
+
         tf.seek(0)
         new_data = tf.read().decode("utf-8")
         tf.close()
