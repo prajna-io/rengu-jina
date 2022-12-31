@@ -40,8 +40,8 @@ class MyLogger(logging.Logger):
 logging.setLoggerClass(MyLogger)
 
 logging.basicConfig(
-    # level="ERROR",
-    level="INFO",
+    level="ERROR",
+    # level="INFO",
     format="[%(asctime)s %(levelname) 5s] %(message)s",
     datefmt="%Y%m%d:%H%M%S",
     handlers=[
@@ -129,7 +129,9 @@ def check_source(store, source, parent_id):
             # check Media=prime
             for result in result_set:
                 if result.get("Media") == "prime":
-                    log.info(f"{parent_id} found match {result} with Media=prime")
+                    log.info(
+                        f"{parent_id} found match {result.get('ID')} with Media=prime"
+                    )
                     return result.get("ID")
 
             log.error(
@@ -184,7 +186,7 @@ def main(store):
             log.info(f"{_id} UPDATED")
             print(dumps(data))
         else:
-            log.info(f"{_id} unmodifed")
+            log.info(f"{_id} unmodified")
 
 
 if __name__ == "__main__":
