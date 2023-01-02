@@ -27,3 +27,9 @@
         elif lookup by Title
         else create new Source
    if not exist, create and link back ID 
+
+
+
+convert copyright to date
+fragment date is date of oldest source
+fragment date is oldest date of creator
